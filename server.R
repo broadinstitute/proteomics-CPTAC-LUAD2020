@@ -25,8 +25,9 @@ shinyServer( function(input, output, session) {
       
       if(global$auth) return()
       list(
-        passwordInput('passphrase',label='Enter passwaord', width=120, placeholder = 'password'),
-        actionButton('authbutton', 'GO')
+        passwordInput('passphrase',label='Enter password', width=120, placeholder = 'Password'),
+        #passwordInput('authbutton',label='Enter password', width=120, placeholder = 'Password')
+        actionButton('authbutton', 'GO', )
       )
     })
     
@@ -35,7 +36,7 @@ shinyServer( function(input, output, session) {
     observeEvent(input$authbutton, {
       global$auth <- authenticateUser(input$passphrase)
       global$init <- F
-     
+      #global$auth <- authenticateUser(input$authbutton)
     })
     
     ##############################
@@ -77,7 +78,19 @@ shinyServer( function(input, output, session) {
            
         HTML('<br><br>'),
         HTML('<p><b>Getting started</b></p>'),
-        helpText('Enter your gene names of interest (official gene symbols, e.g. PIK3R2) into the text field. You can enter up to 20 genes.')#,
+        helpText('Enter your gene names of interest (official gene symbols, e.g. KRAS) into the text field. You can enter up to 20 genes.'),
+        HTML('<p><b>Dataset</b></p>'),
+        HTML('<p>Copy number aberrations are relative to matching normal blood sample and are on log2(CNA)-1 scale. For other data types the heatmap depicts abundances relative to matching normal adjacent tissue (NAT).</p>'),
+        HTML(glue( "<table border-spacing:5px><tr><th>Type</th><th># features</th><th># samples</th></tr>\n
+                   <tr><td>CNA</td><td>{sum(grepl('_CNA', row.anno$DataType))}</td><td>{ncol(tab.expr.all)}</td></tr>\n
+                   <tr><td>mRNA</td><td>{sum(grepl('_RNAseq', row.anno$DataType))}</td><td>{ncol(tab.expr.all)}</td></tr>\n
+                   <tr><td>Protein</td><td>{sum(grepl('_Protein', row.anno$DataType))}</td><td>{ncol(tab.expr.all)}</td></tr>\n
+                   <tr><td>phosphosites </td><td>{sum(grepl('_pSTY', row.anno$DataType))}</td><td>{ncol(tab.expr.all)}</td></tr>\n
+                   <tr><td>acetylsites</td><td>{sum(grepl('_acK', row.anno$DataType))}</td><td>{ncol(tab.expr.all)}</td></tr>\n
+                   </table>"))
+        #HTML(kable(matrix(1:4, nrow=2)))
+        #HTML('<p>For more details please see our publication <a href="http://cancerres.aacrjournals.org/content/78/10/2732" target="_blank_">Mundt <i>et al.</i> Cancer Research. 2018</a></p>')
+        
         #HTML('<p>For more details please see our publication <a href="http://cancerres.aacrjournals.org/content/78/10/2732" target="_blank_">Mundt <i>et al.</i> Cancer Research. 2018</a></p>')
         
         )
@@ -102,6 +115,8 @@ shinyServer( function(input, output, session) {
     output$plot <- renderPlot({
       
       validate(need(global$auth, message = '' ,label = 'auth_plot'))
+      validate(need(!is.null(input$genes), message = 'Nothing to show' ,label = 'no-genes-entered'))
+      
       
       if(!global$auth) return()
       if(is.null(input$genes)) return()

@@ -66,20 +66,6 @@ for(i in names(gct)){
   gct.cid[[i]] <- cid
 }
 
-## rdesc
-#gct.rdesc <- lapply(gct, function(x)x@rdesc)
-
-## expression
-#gct.expr <- lapply(gct, function(x) x@mat)
-
-## column ids
-#gct.cid <-lapply(gct, function(x) x@cid)
-
-## row ids
-#gct.rid <-lapply(gct, function(x) x@rid)
-
-
-
 
 
 ## common sample names
