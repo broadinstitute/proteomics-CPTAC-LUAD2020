@@ -14,9 +14,12 @@ library(shiny)
 shinyServer( function(input, output, session) {
 
     global <- reactiveValues(
+      zscore='row',
+      sort.dir='ascending',
       auth=F,
       init=T,
       all.genes=unique(row.anno[, GENE.COLUMN])
+      
     )
 
     ##############################
@@ -26,7 +29,6 @@ shinyServer( function(input, output, session) {
       if(global$auth) return()
       list(
         passwordInput('passphrase',label='Enter password', width=120, placeholder = 'Password'),
-        #passwordInput('authbutton',label='Enter password', width=120, placeholder = 'Password')
         actionButton('authbutton', 'GO', )
       )
     })
@@ -36,9 +38,8 @@ shinyServer( function(input, output, session) {
     observeEvent(input$authbutton, {
       global$auth <- authenticateUser(input$passphrase)
       global$init <- F
-      #global$auth <- authenticateUser(input$authbutton)
     })
-    
+ 
     ##############################
     ## ui
     ##############################
@@ -56,15 +57,16 @@ shinyServer( function(input, output, session) {
 
         fluidRow(
           column(3, radioButtons('zscore', label='Z-score', choices=c('row', 'none'), selected='row')),
-          column(3, radioButtons('allsites', label='pSTY sites', choices=c('most variable', 'all'), selected='most variable')),
+         # column(3),
+          column(3, radioButtons('allsites', label='phospho/acetyl sites', choices=c('most variable', 'all'), selected='most variable')),
           column(3, textInput('min.val', label='min', value=-2, width='80%')),
           column(3, textInput('max.val', label='max', value=2, width='80%'))
         ),
         fluidRow(
-            column(6, selectizeInput('sort.after', 'Sort by', 
+            column(12, selectizeInput('sort.after', 'Sort by', 
                                      choices=names(columns.to.sort), 
-                                     selected=names(columns.to.sort)[1], multiple=FALSE)),
-            column(6, radioButtons('sort.dir', '', choices=c('ascending', 'descending'), selected='ascending'))
+                                     selected=names(columns.to.sort)[1], multiple=FALSE))#,
+            #column(6, radioButtons('sort.dir', '', choices=c('ascending', 'descending'), selected='ascending'))
             
         ),
           
@@ -78,9 +80,9 @@ shinyServer( function(input, output, session) {
            
         HTML('<br><br>'),
         HTML('<p><b>Getting started</b></p>'),
-        helpText('Enter your gene names of interest (official gene symbols, e.g. KRAS) into the text field. You can enter up to 20 genes.'),
+        helpText(glue("Enter your gene names of interest (official gene symbols, e.g. {GENESSTART[sample(1:length(GENESSTART), 1)]}) into the text field. You can enter up to 20 genes.")),
         HTML('<p><b>Dataset</b></p>'),
-        HTML('<p>Copy number aberrations are relative to matching normal blood sample and are on log2(CNA)-1 scale. For other data types the heatmap depicts abundances relative to matching normal adjacent tissue (NAT).</p>'),
+        HTML('<p>Copy number aberrations are relative to matching normal blood sample and are on log2(CNA)-1 scale. For other data types the heatmap depicts abundances observed in tumor relative to normal adjacent tissue (NAT).</p>'),
         HTML(glue( "<table border-spacing:5px><tr><th>Type</th><th># features</th><th># samples</th></tr>\n
                    <tr><td>CNA</td><td>{sum(grepl('_CNA', row.anno$DataType))}</td><td>{ncol(tab.expr.all)}</td></tr>\n
                    <tr><td>mRNA</td><td>{sum(grepl('_RNAseq', row.anno$DataType))}</td><td>{ncol(tab.expr.all)}</td></tr>\n
@@ -88,7 +90,7 @@ shinyServer( function(input, output, session) {
                    <tr><td>phosphosites </td><td>{sum(grepl('_pSTY', row.anno$DataType))}</td><td>{ncol(tab.expr.all)}</td></tr>\n
                    <tr><td>acetylsites</td><td>{sum(grepl('_acK', row.anno$DataType))}</td><td>{ncol(tab.expr.all)}</td></tr>\n
                    </table>"))
-        #HTML(kable(matrix(1:4, nrow=2)))
+        
         #HTML('<p>For more details please see our publication <a href="http://cancerres.aacrjournals.org/content/78/10/2732" target="_blank_">Mundt <i>et al.</i> Cancer Research. 2018</a></p>')
         
         #HTML('<p>For more details please see our publication <a href="http://cancerres.aacrjournals.org/content/78/10/2732" target="_blank_">Mundt <i>et al.</i> Cancer Research. 2018</a></p>')
@@ -130,7 +132,7 @@ shinyServer( function(input, output, session) {
                min.val=as.numeric(input$min.val), 
                max.val=as.numeric(input$max.val), 
                anno.class=columns.to.sort[input$sort.after], 
-               sort.dir=input$sort.dir)
+               sort.dir=global$sort.dir)
      
      global$expr.select <- hm
     },
@@ -143,13 +145,15 @@ shinyServer( function(input, output, session) {
     #############################
     ## download heatmap
     output$downloadHM <- downloadHandler(
-        filename =  function(){paste(FILENAMESTRING, '.pdf', sep='')},
+        filename =  function(){paste(FILENAMESTRING,  '-',  gsub(' |\\:','-', Sys.time()), '.pdf', sep='')},
         content = function(file){
           genes.vec <- extractGenes( input$genes )
           if(length(genes.vec)==0) return()
           #debug(makeHM)
-          pdf(file, width=20, height=1.5*length(genes.vec))
-          hm=try(makeHM(genes.vec, expr=tab.expr.all, column.anno=column.anno, row.anno=row.anno, zscore=input$zscore, show.sites=input$allsites, min.val=as.numeric(input$min.val), max.val=as.numeric(input$max.val),anno.class=columns.to.sort[input$sort.after], sort.dir=input$sort.dir, filename = file))
+          #pdf(file, width=20, height=1.5*length(genes.vec))
+          pdf(file, width=1400/72, height=dynamicHeightHM(length( findGenesInDataset(extractGenes( input$genes ), input$allsites) ), 
+                                                          length(genes.vec))/72 )
+          hm=try(makeHM(genes.vec, expr=tab.expr.all, column.anno=column.anno, row.anno=row.anno, zscore=input$zscore, show.sites=input$allsites, min.val=as.numeric(input$min.val), max.val=as.numeric(input$max.val),anno.class=columns.to.sort[input$sort.after], sort.dir=global$sort.dir, filename = file))
           dev.off()
           }
      )      
@@ -157,7 +161,7 @@ shinyServer( function(input, output, session) {
     #############################
     ## download Excel
     output$downloadTab <- downloadHandler(
-        filename = function(){paste(FILENAMESTRING, '.xlsx', sep='')},
+        filename = function(){paste( FILENAMESTRING, '-',  gsub(' |\\:','-', Sys.time()) ,'.xlsx', sep='')},
         content = function(file){
             tab=as.data.frame(global$expr.select)
             WriteXLS('tab', ExcelFileName=file, SheetNames=FILENAMESTRING, FreezeCol=4, FreezeRow=10, row.names=T)

@@ -6,8 +6,6 @@
 ## This file imports the underlying data and contains global functions
 ## and variables used by 'ui.R' and 'server.R'
 #################################################################
-
-#source('pheatmap.r')
 library(pacman)
 p_load(BiocManager)
 p_load(scales)
@@ -20,13 +18,10 @@ p_load(gplots)
 p_load(WriteXLS)
 p_load(grid)
 p_load(bcrypt)
-
-#source('pheatmap.r')
-
+p_load(glue)
 
 ## import the data
-#load('data/data-luad-v3.1.RData')
-load('data/data-luad-v3.1-tumor-over-nat.RData')
+load('data/data-luad-v3.2-tumor-over-nat.RData')
 
 ## global parameters
 GENE.COLUMN <<- 'geneSymbol' 
@@ -34,34 +29,35 @@ DATATYPE.COLUMN <<- 'DataType'
 
 GENEMAX <<- 20
 TITLESTRING <<- 'CPTAC LUAD discovery cohort'
-WINDOWTITLE <<- 'CPTAC-LUAD-2019'
+WINDOWTITLE <<- 'CPTAC-LUAD-2020'
 GAPSIZEROW <<- 20
-FILENAMESTRING <<- 'CPTAC-LUAD2019'
+FILENAMESTRING <<- 'CPTAC-LUAD2020'
 
 cellwidth <<- 8
 cellheight <<- 10
 
 ################################################
 ## 
-
-GENESSTART <<- c('SPRR2D', 'DYSF', 'CD274',
-                 'MUC5AC', 'CLDN18', 'ARHGEF6', 
-                 'BPIFA1', 'FDX1', 'EML1', 
-                 'PTK2', 'NCOA2', 'PTPN13')
-#GENESSTART <<- c('TP53', 'ALK', 'EGFR', 'RB1', 'KRAS', 'STK11' )
+# GENESSTART <<- c('SPRR2D', 'DYSF', 'CD274',
+#                  'MUC5AC', 'CLDN18', 'ARHGEF6', 
+#                  'BPIFA1', 'FDX1', 'EML1', 
+#                  'PTK2', 'NCOA2', 'PTPN13')
+GENESSTART <<- c('TP53', 'ALK', 'EGFR', 'RB1', 'KRAS', 'STK11' )
 
 ##########################################
 ## annotaion tracks shown in heatmap 
 anno.all <- rev(c('Multi.omic.subtype'='NMF.consensus', 
-              'RNA.subtype.TCGA'='mRNA.Expression.Subtype.TCGA', 
-              #'Smoking.Score.WGS'='Smoking.Score.WGS',
-              'CIMP.status'='CIMP.status',
-              'TP53.mutation'='TP53.mutation.status',
-              "KRAS.mutation"="KRAS.mutation.status" ,
-              "EGFR.mutation"="EGFR.mutation.status",
-              "STK11.mutation"="STK11.mutation.status",
-              "ALK.fusion"="ALK.fusion"
-              ))
+                  'RNA.subtype.TCGA'='mRNA.Expression.Subtype.TCGA', 
+                  'Smoking.Score.WGS'='Smoking.Score.WGS',
+                  'TSNet.Purity'='TSNet.Purity',
+                  'ESTIMATE.ImmuneScore'='ESTIMATE.ImmuneScore',
+                  'CIMP.status'='CIMP.status',
+                  'TP53.mutation'='TP53.mutation.status',
+                  "KRAS.mutation"="KRAS.mutation.status" ,
+                  "EGFR.mutation"="EGFR.mutation.status",
+                  "STK11.mutation"="STK11.mutation.status",
+                  "ALK.fusion"="ALK.fusion"
+))
 
 ##############################
 ## color mappings for 'anno.all'
@@ -75,14 +71,25 @@ column.anno.col <<- list(
                       'Terminal Respiratory Unit'=rgb(252, 180, 98, maxColorValue = 255)),
   CIMP.status=c('CIMP-1'=rgb(179, 205, 227, maxColorValue = 255),
                 'CIMP-2'=rgb(139, 150, 199, maxColorValue = 255),
-                'CIMP+'=rgb(136, 69, 153, maxColorValue = 255)
-                ),
+                'CIMP+'=rgb(136, 69, 153, maxColorValue = 255),
+                'NA'='white'
+  ),
   TP53.mutation=c('0'='white', '1'='black'),
   KRAS.mutation=c('0'='white', '1'='black'),
   EGFR.mutation=c('0'='white', '1'='black'),
   STK11.mutation=c('0'='white', '1'='black'),
-  ALK.fusion=c('0'='white', '1'='darkblue')
+  ALK.fusion=c('0'='white', '1'='darkblue'),
+  
+  Smoking.Score.WGS=circlize::colorRamp2( c(0, 0.5, 1), c('grey90', 'grey50','black')),
+  
+  TSNet.Purity=circlize::colorRamp2( c(0, 0.5, 1), c('grey90', 'grey50','black')),
+  ESTIMATE.ImmuneScore=circlize::colorRamp2( c(676, 4700, 6800), 
+                                             c(rgb(255,245,240, maxColorValue = 255),  
+                                               rgb(251,106,74, maxColorValue = 255),  
+                                               rgb(165,21,22, maxColorValue = 255)))
+  
 )
+
 
 #############################
 ## columns used for sorting
@@ -119,11 +126,12 @@ MyComplexHeatmap <- function(m, rdesc, cdesc, cdesc.color, max.val, column2sort)
   
   #########################################
   ## annotations
+ # View(cdesc)
   cdesc.ha <- HeatmapAnnotation(df=cdesc, col=cdesc.color,
                                 
                                 show_legend = T, show_annotation_name = T, 
                                 annotation_name_side = 'left',
-                               
+                                na_col = "white",
                                  annotation_legend_param=list(
                                   direction='horizontal'#,
                                  # vt_gap = unit(0.6, 'cm')
@@ -133,6 +141,12 @@ MyComplexHeatmap <- function(m, rdesc, cdesc, cdesc.color, max.val, column2sort)
   )
   ####################################
   ## heatmap
+  ## determine height
+  n.entries <- nrow(m)
+  n.genes <- length(unique(rdesc$geneSymbol))
+
+  cat('hm height:', dynamicHeightHM(n.entries, n.genes), '\n')
+  
   hm <- Heatmap(m, col=col.hm,
                 
                 cluster_columns = F,
@@ -140,7 +154,8 @@ MyComplexHeatmap <- function(m, rdesc, cdesc, cdesc.color, max.val, column2sort)
                 
                 top_annotation = cdesc.ha,
                 
-                split = rdesc$geneSymbol, 
+                row_split = rdesc$geneSymbol, 
+                row_title_rot=0,
                 column_split=column2sort,
                 
                 name='relative abundance',
@@ -148,7 +163,9 @@ MyComplexHeatmap <- function(m, rdesc, cdesc, cdesc.color, max.val, column2sort)
                 show_column_names = F,
                 #use_raster = FALSE,
                 
-                heatmap_height=unit(0.6*nrow(m), 'cm'  )
+                height = unit(0.5 ,'cm') * n.entries
+                #heatmap_height = unit( dynamicHeightHM(n.entries, n.genes) ,'points')
+                #heatmap_height = unit( dynamicHeightHM(n.entries, n.genes)-50 ,'points')
                   )
   ## plot
   draw(hm, annotation_legend_side='bottom')
@@ -194,8 +211,13 @@ extractGenes <- function(genes.char){
 dynamicHeightHM <- function(n.entries, n.genes){
   
   #height = (n.entries+2)*11 + (n.genes-1)*GAPSIZEROW + 140
-  #height = (n.entries)*20
-  height = (n.entries+2)*13 + (n.genes-1)*GAPSIZEROW + 140
+  #height = (n.entries+4)*15 + (n.genes-1)*GAPSIZEROW + 200
+  
+  height <- 0.3937*n.entries + 0.7423 ## height in inch
+  #height <- 5*n.entries + 18.85
+  height <- height + 12*0.3937 + 0.7423            ## add annotation tracks
+  height <- height * 48             ## inch  to pixel
+  
   
   return(height)
 }
@@ -284,8 +306,9 @@ makeHM <- function(gene, filename=NA, expr=tab.expr.all,
     ## #############################
     
     ## reorder
-    #ord.idx <- order(column.anno[, anno.class], decreasing = ifelse(sort.dir == 'descending', T, F))
-    ord.idx <- with(column.anno, order( eval(parse( text=anno.class ))))
+    cat(sort.dir, '\n')
+    ord.idx <- order(column.anno[, anno.class], decreasing = ifelse(sort.dir == 'descending', T, F))
+    #ord.idx <- with(column.anno, order( eval(parse( text=anno.class )), decreasing = ifelse(sort.dir == 'descending', T, F) ))
     column.anno <- column.anno[ord.idx,]
     expr <- expr[, ord.idx]
     
@@ -301,8 +324,6 @@ makeHM <- function(gene, filename=NA, expr=tab.expr.all,
     ## extract genes of interest
     expr.select <- expr[gene.idx, ]
     row.anno.select <- row.anno[gene.idx, ]
-    
-    ## order
     
     #####################################################
     ## labels for the rows in the heatmap
@@ -367,18 +388,18 @@ makeHM <- function(gene, filename=NA, expr=tab.expr.all,
     ################################
     ## gaps
     ################################
-    if(sort.dir == 'descending')
-      gaps.column=cumsum(c( rev(table(column.anno[, anno.class])) ))
-    if(sort.dir == 'ascending')
-      gaps.column=cumsum(c(  table(column.anno[, anno.class]) ))
-    gaps.row=cumsum(table(sub(' .*', '', featureIDs.anno.select)))
+    #if(sort.dir == 'descending')
+    #  gaps.column=cumsum(c( rev(table(column.anno[, anno.class])) ))
+    #if(sort.dir == 'ascending')
+    #  gaps.column=cumsum(c(  table(column.anno[, anno.class]) ))
+    #gaps.row=cumsum(table(sub(' .*', '', featureIDs.anno.select)))
 
 
     ################################
     ## colors misc
-    color.breaks = seq(min.val, max.val, length.out=n.bins)
-    color.hm =  colorRampPalette( c('blue', 'grey', 'red'))(length(color.breaks))
-    color.border = 'white'
+    #color.breaks = seq(min.val, max.val, length.out=n.bins)
+    #color.hm =  colorRampPalette( c('blue', 'grey', 'red'))(length(color.breaks))
+    #color.border = 'white'
 
     #legend_breaks=seq(-3, 3, 1)
     #legend_labels=c('-3               ', '-2', '-1', ' 0', '+1', '+2' ,'+3')
@@ -386,18 +407,15 @@ makeHM <- function(gene, filename=NA, expr=tab.expr.all,
 
     ###############################
     ## heatmap
-    #View(row.anno.select)
-    #MyComplexHeatmap <- function(m, cdesc, cdesc.color, class.variable, variable.other, max.val)
+    column2sort <- column.anno[, anno.class]
+    if(mode(column.anno.col[[anno.class]]) == 'function')
+      column2sort  <- NULL
+    
     MyComplexHeatmap(expr.select.zscore, row.anno.select, column.anno.fig, column.anno.col, 
-                     max.val=max.val, column2sort= column.anno[, anno.class]
+                     max.val=max.val, column2sort=column2sort
                      )
     
-  # pheatmap(expr.select.zscore, cluster_row=F, cluster_col=F,  annotation_col=column.anno.fig, annotation_colors=column.anno.col,  
-  #           scale = "none", labels_row=featureIDs.anno.select, border_color=color.border, gaps_col=gaps.column, 
-  #           gaps_row=gaps.row, color=color.hm, cellwidth=cellwidth, cellheight=cellheight, 
-  #           labels_col=sampleIDs, breaks=color.breaks, legend_breaks=legend_breaks, legend_labels=legend_labels, na_col='white', filename=filename, ...)
 
-  
     #########################################################################################
     ##
     ## - return part of table that is shown in the heatmap and that can be downloaded
