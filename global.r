@@ -47,7 +47,8 @@ GENESSTART <<- c('TP53', 'ALK', 'EGFR', 'RB1', 'KRAS', 'STK11' )
 ##########################################
 ## annotaion tracks shown in heatmap 
 anno.all <- rev(c('Multi.omic.subtype'='NMF.consensus', 
-                  'RNA.subtype.TCGA'='mRNA.Expression.Subtype.TCGA', 
+                  'RNA.subtype.TCGA'='mRNA.Expression.Subtype.TCGA',
+                  'Tumor.Stage'='Stage',
                   'Smoking.Score.WGS'='Smoking.Score.WGS',
                   'TSNet.Purity'='TSNet.Purity',
                   'ESTIMATE.ImmuneScore'='ESTIMATE.ImmuneScore',
@@ -74,6 +75,7 @@ column.anno.col <<- list(
                 'CIMP+'=rgb(136, 69, 153, maxColorValue = 255),
                 'NA'='white'
   ),
+  Tumor.Stage=c('1'=blues9[1], '1A'=blues9[2], '1B'=blues9[3], '2A'=blues9[4], '2B'=blues9[5], '3'=blues9[6], '3A'=blues9[7]),
   TP53.mutation=c('0'='white', '1'='black'),
   KRAS.mutation=c('0'='white', '1'='black'),
   EGFR.mutation=c('0'='white', '1'='black'),
