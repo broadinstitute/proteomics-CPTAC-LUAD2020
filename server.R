@@ -16,8 +16,8 @@ shinyServer( function(input, output, session) {
     global <- reactiveValues(
       zscore='row',
       sort.dir='ascending',
-      auth=F,
-      init=T,
+      auth=T,
+      init=F,
       all.genes=unique(row.anno[, GENE.COLUMN])
       
     )
@@ -29,7 +29,7 @@ shinyServer( function(input, output, session) {
       if(global$auth) return()
       list(
         passwordInput('passphrase',label='Enter password', width=120, placeholder = 'Password'),
-        actionButton('authbutton', 'GO', )
+        actionButton('authbutton', 'GO' )
       )
     })
     
