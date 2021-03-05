@@ -28,7 +28,10 @@ GENE.COLUMN <<- 'geneSymbol'
 DATATYPE.COLUMN <<- 'DataType'
 
 GENEMAX <<- 20
-TITLESTRING <<- 'CPTAC LUAD discovery cohort'
+
+TITLESTRING <<- '<font size="5" face="times"><i><b>"Proteogenomic Characterization Reveals Therapeutic Vulnerabilities in Lung Adenocarcinoma"</b></i> (<a href="https://www.cell.com/cell/fulltext/S0092-8674(20)30744-3" target="_blank_">Gillette <i>et al.</i> 2020, Cell</a>)</font><br>'
+TITLESTRING.HEATMAP <<- 'Suppl. data: "Proteogenomic Characterization Reveals Therapeutic Vulnerabilities in Lung Adenocarcinoma", Gillette et al. Cell, 2020'
+
 WINDOWTITLE <<- 'CPTAC-LUAD-2020'
 GAPSIZEROW <<- 20
 FILENAMESTRING <<- 'CPTAC-LUAD2020'
@@ -38,10 +41,6 @@ cellheight <<- 10
 
 ################################################
 ## 
-# GENESSTART <<- c('SPRR2D', 'DYSF', 'CD274',
-#                  'MUC5AC', 'CLDN18', 'ARHGEF6', 
-#                  'BPIFA1', 'FDX1', 'EML1', 
-#                  'PTK2', 'NCOA2', 'PTPN13')
 GENESSTART <<- c('TP53', 'ALK', 'EGFR', 'RB1', 'KRAS', 'STK11' )
 
 ##########################################
@@ -111,7 +110,7 @@ authenticateUser <- function(passphrase){
 
 ###################################################################
 ## heatmap using ComplexHeatmap package
-MyComplexHeatmap <- function(m, rdesc, cdesc, cdesc.color, max.val, column2sort){
+MyComplexHeatmap <- function(m, rdesc, cdesc, cdesc.color, max.val, column2sort, main=''){
   
   if(is.null(max.val)){
     m.max <- ceiling(max(abs(m), na.rm=T))
@@ -134,11 +133,8 @@ MyComplexHeatmap <- function(m, rdesc, cdesc, cdesc.color, max.val, column2sort)
                                 show_legend = T, show_annotation_name = T, 
                                 annotation_name_side = 'left',
                                 na_col = "white",
-                                 annotation_legend_param=list(
-                                  direction='horizontal'#,
-                                 # vt_gap = unit(0.6, 'cm')
-                                  
-                                  #title_position = "leftcenter"
+                                annotation_legend_param=list(
+                                  direction='horizontal'
                                 )
   )
   ####################################
@@ -162,13 +158,12 @@ MyComplexHeatmap <- function(m, rdesc, cdesc, cdesc.color, max.val, column2sort)
                 
                 name='relative abundance',
                 show_row_names = T,
-                show_column_names = F,
-                #use_raster = FALSE,
+                show_column_names = F, 
+                column_title = main,
                 
                 height = unit(0.5 ,'cm') * n.entries
-                #heatmap_height = unit( dynamicHeightHM(n.entries, n.genes) ,'points')
-                #heatmap_height = unit( dynamicHeightHM(n.entries, n.genes)-50 ,'points')
-                  )
+
+                )
   ## plot
   draw(hm, annotation_legend_side='bottom')
 }
@@ -210,16 +205,11 @@ extractGenes <- function(genes.char){
 ##################################################################
 ## function to dynamically determine the height (in px) of the heatmap
 ## depending on the number of genes
-dynamicHeightHM <- function(n.entries, n.genes){
+dynamicHeightHM <- function(n.entries, n.genes, n.anno=12){
   
-  #height = (n.entries+2)*11 + (n.genes-1)*GAPSIZEROW + 140
-  #height = (n.entries+4)*15 + (n.genes-1)*GAPSIZEROW + 200
-  
-  height <- 0.3937*n.entries + 0.7423 ## height in inch
-  #height <- 5*n.entries + 18.85
-  height <- height + 12*0.3937 + 0.7423            ## add annotation tracks
-  height <- height * 48             ## inch  to pixel
-  
+  height <- 0.3937*n.entries + 0.7423         ## height in inch
+  height <- height + n.anno*0.3937 + 0.7423   ## add annotation tracks
+  height <- height * 48                       ## inch  to pixel
   
   return(height)
 }
@@ -300,7 +290,8 @@ findGenesInDataset <- function(gene, show.sites){
 makeHM <- function(gene, filename=NA, expr=tab.expr.all, 
                    column.anno=column.anno, row.anno=row.anno, zscore="none", 
                    anno.class='PAM50', sort.dir, 
-                   show.sites='all', min.val=-3, max.val=3, ...){
+                   show.sites='all', min.val=-3, max.val=3, 
+                   main='', ...){
 
     n.bins=12
 
@@ -382,7 +373,6 @@ makeHM <- function(gene, filename=NA, expr=tab.expr.all,
 
     ##############################
     ## column annotation
-    #column.anno.fig <- column.anno[, c('PAM50', 'ER', 'PR', 'HER2')]
     column.anno.fig <- column.anno[, anno.all]
     colnames(column.anno.fig) <- names(anno.all)
 
@@ -414,7 +404,7 @@ makeHM <- function(gene, filename=NA, expr=tab.expr.all,
       column2sort  <- NULL
     
     MyComplexHeatmap(expr.select.zscore, row.anno.select, column.anno.fig, column.anno.col, 
-                     max.val=max.val, column2sort=column2sort
+                     max.val=max.val, column2sort=column2sort, main=main
                      )
     
 
